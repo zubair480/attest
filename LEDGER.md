@@ -1,17 +1,15 @@
 # Attest — shared coordination ledger
 
-Both agents read this before acting and append to it after. The Cotal
-channel `team.attest` carries the messages between the two organisations;
-this file carries the state they share.
+Both agents read this before acting and append to it after. The Cotal channel
+`team.attest` carries the messages; this file carries the state.
 
-**Heartbeat:** every 60s. **Controls:** 4, **unsettled:** 0.
+**Heartbeat:** every 60s. **Controls:** 3, **still open:** 0.
 
 | Control | State | Verdict | Last activity |
 |---|---|---|---|
-| DEP-01 | held | REFUTED | 20:00:06Z |
-| INP-01 | held | REFUTED | 19:32:00Z |
+| DEP-01 | held | REFUTED | 19:21:04Z |
+| INP-01 | awaiting verdict | - | 19:30:50Z |
 | SCM-01 | accepted | SUPPORTED | 19:34:03Z |
-| ACC-01 | escalated (human) | ESCALATED | 21:01:01Z |
 
 ## Log
 

@@ -1,0 +1,105 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Attest — console</title>
+<style>
+  :root{--bg:#0b0d10;--panel:#12161b;--line:#222a33;--fg:#e6e9ef;--mute:#8b96a5;
+        --held:#ff8f6b;--ok:#6bd68a;--esc:#ffc857;--accent:#7aa2ff}
+  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--fg);
+    font:15px/1.55 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  .wrap{max-width:1080px;margin:0 auto;padding:36px 22px 80px}
+  h1{font-size:26px;margin:0 0 6px;letter-spacing:-.02em}
+  .sub{color:var(--mute);margin:0 0 26px;max-width:62ch}
+  .bar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:22px}
+  button{background:var(--accent);color:#0b0d10;border:0;border-radius:7px;
+    padding:11px 20px;font-weight:650;font-size:15px;cursor:pointer}
+  button:disabled{opacity:.5;cursor:default}
+  .pill{font:12px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--mute);
+    border:1px solid var(--line);border-radius:999px;padding:5px 11px}
+  table{width:100%;border-collapse:collapse;margin-top:8px}
+  th{text-align:left;font:11px ui-monospace,monospace;letter-spacing:.09em;
+     text-transform:uppercase;color:var(--mute);padding:0 12px 9px;font-weight:600}
+  td{border-top:1px solid var(--line);padding:14px 12px;vertical-align:top}
+  tr[data-out="ESCALATED"]{background:rgba(255,200,87,.06)}
+  .id{font:13px ui-monospace,monospace;color:var(--fg)}
+  .q{color:var(--mute);font-size:13px;margin-top:3px;max-width:44ch}
+  .v{font:12px ui-monospace,monospace;font-weight:700;letter-spacing:.02em}
+  .REFUTED{color:var(--held)} .SUPPORTED{color:var(--ok)}
+  .INSUFFICIENT,.ESCALATED{color:var(--esc)}
+  .why{color:var(--mute);font-size:13px;margin-top:7px;max-width:70ch}
+  .note{border-left:2px solid var(--esc);padding:10px 0 10px 14px;margin-top:10px;
+    color:#f0d9a4;font-size:13px;max-width:70ch}
+  .empty{color:var(--mute);padding:26px 12px;font-size:14px}
+  footer{margin-top:34px;color:var(--mute);font-size:13px;max-width:74ch}
+  code{font:12px ui-monospace,monospace;color:#b9c4d4}
+  .spin{display:inline-block;width:13px;height:13px;border:2px solid var(--line);
+    border-top-color:var(--accent);border-radius:50%;animation:s .7s linear infinite;
+    vertical-align:-2px;margin-right:7px}
+  @keyframes s{to{transform:rotate(360deg)}}
+</style>
+<div class="wrap">
+  <h1>Attest</h1>
+  <p class="sub">A bank asks a vendor a security control question. The vendor answers and
+  attaches evidence about its own system. The answer is not recorded until two independent
+  gates agree it is supported.</p>
+
+  <div class="bar">
+    <button id="run">Run assessment</button>
+    <span class="pill" id="judge">…</span>
+    <span class="pill" id="status">idle</span>
+  </div>
+
+  <table>
+    <thead><tr>
+      <th style="width:31%">Control</th>
+      <th style="width:15%">Severity counter</th>
+      <th style="width:15%">Relevance judge</th>
+      <th>Outcome</th>
+    </tr></thead>
+    <tbody id="rows"><tr><td colspan="4" class="empty">Press <b>Run assessment</b>. Nothing here is cached — the collectors and both gates execute on this machine when you click.</td></tr></tbody>
+  </table>
+
+  <footer>
+    The severity counter is deterministic and offline. The relevance judge is a Runtype
+    agent asked one question only: can this evidence answer this control at all? Neither
+    overrides the other — when they split, the control escalates and nothing is recorded,
+    because that is the case a person should read.
+  </footer>
+</div>
+<script>
+const $ = s => document.querySelector(s)
+const esc = s => String(s ?? '').replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))
+
+fetch('/api/meta').then(r => r.json()).then(m => {
+  $('#judge').textContent = m.judge ? 'relevance judge: live' : 'relevance judge: no key'
+  window.__controls = m.controls
+})
+
+$('#run').onclick = async () => {
+  const btn = $('#run'); btn.disabled = true
+  $('#status').innerHTML = '<span class="spin"></span>running collectors + both gates'
+  $('#rows').innerHTML = ''
+  try {
+    for (const c of (window.__controls || [])) {
+      const tr = document.createElement('tr')
+      tr.innerHTML = `<td><span class="id">${esc(c.id)}</span><div class="q">${esc(c.question)}</div></td>
+        <td colspan="3" class="q"><span class="spin"></span>collecting evidence…</td>`
+      $('#rows').appendChild(tr)
+      const [r] = await (await fetch('/api/run?control=' + encodeURIComponent(c.id))).json()
+      tr.dataset.out = r.outcome
+      tr.innerHTML = `
+        <td><span class="id">${esc(r.control_id)}</span><div class="q">${esc(r.question)}</div>
+            <div class="q"><code>${esc(r.evidence_method)}</code> · ${r.findings_total} findings, ${r.findings_blocking} blocking</div></td>
+        <td><span class="v ${esc(r.counter)}">${esc(r.counter)}</span></td>
+        <td><span class="v ${esc(r.judge)}">${esc(r.judge)}</span></td>
+        <td><span class="v ${esc(r.outcome)}">${esc(r.outcome)}</span>
+            ${r.judge_reason ? `<div class="why">${esc(r.judge_reason)}</div>` : ''}
+            ${r.escalation ? `<div class="note">${esc(r.escalation)}</div>` : ''}
+            <div class="why"><code>sha256 ${esc(String(r.evidence_digest).slice(0,16))}…</code></div></td>`
+    }
+    $('#status').textContent = 'done'
+  } catch (e) {
+    $('#status').textContent = 'error: ' + e.message
+  }
+  btn.disabled = false
+}
+</script>

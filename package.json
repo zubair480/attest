@@ -11,6 +11,7 @@
     "judge": "node attest/src/demo.js",
     "ledger": "node attest/src/cli.js ledger",
     "heartbeat": "node attest/src/ledger.js --watch",
-    "dual": "node attest/src/dual.js"
+    "dual": "node attest/src/dual.js",
+    "ui": "node ui/server.js"
   }
 }
