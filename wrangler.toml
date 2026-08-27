@@ -1,4 +1,4 @@
-name = "attest"
+name = "attest-tprm"
 main = "worker/index.js"
 compatibility_date = "2026-08-01"
 

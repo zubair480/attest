@@ -130,7 +130,7 @@ function judgePayload(control, answer, ev) {
 // that produced it, so nobody has to guess which judge spoke.
 async function workersAiJudge(control, answer, ev, env) {
   if (!env.AI) return { error: 'no AI binding' }
-  const model = '@cf/meta/llama-3.1-8b-instruct'
+  const model = '@cf/meta/llama-3.3-70b-instruct-fp8-fast'
   try {
     const res = await env.AI.run(model, {
       messages: [
@@ -139,10 +139,29 @@ async function workersAiJudge(control, answer, ev, env) {
       ],
       max_tokens: 260
     })
-    const raw = (res && (res.response || res.result || '')).toString()
+    // Some models return the object already parsed rather than a JSON string.
+    // Take it as-is when it carries a verdict; only fall through to text
+    // parsing when it does not.
+    const direct = res && res.response
+    if (direct && typeof direct === 'object' && direct.verdict) {
+      return { verdict: direct.verdict, reason: direct.reason || null, citations: [], judged_by: 'workers-ai ' + model }
+    }
+
+    // Response shapes differ by model, so read the ones that exist rather than
+    // assuming one. If none match, say what came back instead of reporting a
+    // bare failure nobody can act on.
+    const raw = String(
+      (typeof direct === 'string' ? direct : null) ??
+      (res && res.result && res.result.response) ??
+      (res && res.output) ??
+      (res && res.choices && res.choices[0] && res.choices[0].message && res.choices[0].message.content) ??
+      ''
+    )
+    if (!raw) return { error: 'workers-ai gave no text; shape: ' + JSON.stringify(res).slice(0, 160) }
     const m = raw.match(/\{[\s\S]*\}/)
-    if (!m) return { error: 'workers-ai returned no json' }
-    const parsed = JSON.parse(m[0])
+    if (!m) return { error: 'workers-ai returned no json: ' + raw.slice(0, 120) }
+    let parsed
+    try { parsed = JSON.parse(m[0]) } catch { return { error: 'workers-ai json parse failed: ' + m[0].slice(0, 120) } }
     if (!parsed.verdict) return { error: 'workers-ai returned no verdict' }
     return { verdict: parsed.verdict, reason: parsed.reason || null, citations: [], judged_by: 'workers-ai ' + model }
   } catch (e) {
@@ -232,6 +251,7 @@ async function assess(control, vendorId, env) {
     judge: second.second_opinion,
     judge_reason: second.reason || null,
     judged_by: second.judged_by || null,
+    judge_detail: second.detail || null,
     outcome: second.outcome,
     escalation: second.escalation || null
   }
