@@ -38,7 +38,12 @@ function readEntries() {
 // views call this, so they can never disagree about what is settled -- which
 // is exactly the bug this replaced.
 function decisionOf(e) {
-  const token = (e.detail || '').match(/(SUPPORTED|REFUTED|INSUFFICIENT)/)
+  const detail = e.detail || ''
+  // ESCALATED is checked first and deliberately. An escalation line names the
+  // verdicts the two gates gave, so a naive scan finds REFUTED inside it and
+  // records a refusal that was never actually recorded. Order matters here.
+  if (/ESCALATED/.test(detail) || e.event === 'escalated') return 'ESCALATED'
+  const token = detail.match(/(SUPPORTED|REFUTED|INSUFFICIENT)/)
   if (token) return token[1]
   const byWord = { held: 'REFUTED', refuted: 'REFUTED', accepted: 'SUPPORTED', supported: 'SUPPORTED' }
   return byWord[e.event] || null
@@ -63,7 +68,9 @@ function render(entries) {
   }
   const rows = controls.map(ctl => {
     const s = byControl.get(ctl.id) || {}
-    const state = s.verdict ? (s.verdict === 'SUPPORTED' ? 'accepted' : 'held')
+    const state = s.verdict === 'SUPPORTED' ? 'accepted'
+      : s.verdict === 'ESCALATED' ? 'escalated (human)'
+      : s.verdict ? 'held'
       : s.answered ? 'awaiting verdict' : s.asked ? 'awaiting answer' : 'open'
     return `| ${ctl.id} | ${state} | ${s.verdict || '-'} | ${s.decided || s.answered || s.asked || '-'} |`
   })
