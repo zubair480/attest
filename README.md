@@ -34,25 +34,38 @@ Current run: **3 controls, 2 held, 1 accepted.**
 
     npm run dual
 
-- **Deterministic** (`attest/src/evaluate.js`) counts blocking severities.
-  Fast, offline, and cannot be argued out of a finding. It has no way to know
+- **Severity counter** (`attest/src/evaluate.js`) counts blocking findings.
+  Fast, offline, cannot be argued out of a finding. It has no way to know
   whether a finding is *relevant* to the control that was asked.
-- **Runtype agent** (`attest/src/judge.js`) is asked that one question, and only
-  that one: does this evidence actually answer this control? A dependency CVE
-  says nothing about physical access control, and a counter cannot see that.
+- **Relevance judge** (`attest/src/judge.js`, a Runtype agent) is asked that one
+  question and only that one: can this evidence answer this control at all?
 
-Both gates over all three controls, run live:
+Both gates over four controls, run live:
 
-| Control | Deterministic | Runtype | |
+| Control | Severity counter | Relevance judge | Outcome |
 |---|---|---|---|
-| DEP-01 | REFUTED | REFUTED | agree |
-| INP-01 | REFUTED | REFUTED | agree |
-| SCM-01 | SUPPORTED | SUPPORTED | agree |
+| DEP-01 | REFUTED | REFUTED | held |
+| INP-01 | REFUTED | REFUTED | held |
+| SCM-01 | SUPPORTED | SUPPORTED | accepted |
+| ACC-01 | REFUTED | **INSUFFICIENT** | **escalated** |
 
-The second opinion **never overrides** the first. When they disagree, the
-disagreement is reported rather than resolved — a silent tie-break would bury
-exactly the case a human should look at. And the whole thing degrades cleanly:
-delete `.runtype-key` and the deterministic gate carries on alone.
+**ACC-01 is why the second gate exists.** It asks whether production access is
+restricted to named individuals with MFA, and it is answered with a dependency
+scan — the wrong instrument entirely. The counter sees seven blocking findings
+and refutes. The judge sees that npm audit output cannot speak to access
+control, and refuses to conclude anything:
+
+> "The provided npm audit dependency scan does not evaluate or provide evidence
+> regarding production access control or multi-factor authentication."
+
+A counter alone would have recorded a refusal it had no grounds for. That is a
+false negative against the vendor, produced confidently, and no amount of
+counting catches it.
+
+**Disagreement is an outcome, not a footnote.** Neither gate overrides the
+other. A split escalates and nothing is recorded, because a case the two gates
+read differently is precisely the one a person should read. Delete
+`.runtype-key` and the counter carries on alone — with that blind spot back.
 
 ## Evidence is pluggable, and says what it is
 
@@ -103,6 +116,29 @@ Two different jobs, deliberately not collapsed into one:
 A shared file assumes one filesystem, which means one machine and one
 organisation. Using it as the transport would delete the cross-org property
 entirely, so it holds state only.
+
+## What this does not solve
+
+**The evidence is vendor-produced, and nothing here proves it is real.** The
+sha256 in every receipt binds the bundle to what was delivered; it says nothing
+about whether the vendor's collector actually ran. A vendor agent could return
+fabricated findings and both gates would reason faithfully over a lie.
+
+That is a real hole in a product about not trusting claims, and it is worth
+being precise about what it does and does not undermine:
+
+- It does not undermine the **refusals**. A vendor that fakes evidence fakes it
+  *in its own favour*. DEP-01 and INP-01 are held because the vendor handed over
+  findings that damage its own answer, which is not a thing a liar does.
+- It does undermine the **acceptances**. SCM-01 passed on an empty finding list,
+  and an empty list is exactly what a dishonest collector would return.
+
+The honest framing is that this moves the trust boundary rather than removing
+it: today a bank trusts a PDF written eleven months ago by someone the vendor
+paid, and here it trusts a scan the vendor ran a moment ago and had to hand over
+in full. Closing the gap properly needs attested execution — a signed collector,
+a reproducible run, or a third party that re-runs the scan and compares digests.
+None of that is built.
 
 ## Honest limits
 

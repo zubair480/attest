@@ -19,5 +19,13 @@
     "question": "Are dependency versions pinned by a committed lockfile?",
     "evidence_method": "lockfile_present",
     "vendor_position": "yes"
+  },
+  {
+    "id": "ACC-01",
+    "framework": "SIG/CAIQ",
+    "question": "Is production access restricted to named individuals with multi-factor authentication?",
+    "evidence_method": "dependency_scan",
+    "vendor_position": "yes",
+    "note": "Deliberately answered with the wrong instrument. A dependency scan cannot speak to access control. The deterministic gate counts blocking findings and refutes; the relevance judge should refuse to draw a conclusion at all."
   }
 ]

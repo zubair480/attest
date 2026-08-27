@@ -17,7 +17,7 @@
       "https://github.com/advisories/GHSA-r5fr-rjxr-66jc",
       "https://github.com/advisories/GHSA-9wv6-86v2-598j"
     ],
-    "decided_at": "2026-08-27T20:01:43.116Z"
+    "decided_at": "2026-08-27T20:52:09.521Z"
   },
   {
     "control_id": "INP-01",
@@ -33,7 +33,7 @@
     "citations": [
       "https://github.com/advisories/GHSA-p6mc-m468-83gw"
     ],
-    "decided_at": "2026-08-27T20:01:43.116Z"
+    "decided_at": "2026-08-27T20:52:09.522Z"
   },
   {
     "control_id": "SCM-01",
@@ -47,6 +47,26 @@
     "verdict": "SUPPORTED",
     "reason": "Vendor answered \"yes\" and its lockfile-check returned no blocking findings.",
     "citations": [],
-    "decided_at": "2026-08-27T20:01:43.117Z"
+    "decided_at": "2026-08-27T20:52:09.523Z"
+  },
+  {
+    "control_id": "ACC-01",
+    "framework": "SIG/CAIQ",
+    "question": "Is production access restricted to named individuals with multi-factor authentication?",
+    "vendor_answer": "yes",
+    "evidence_method": "npm-audit",
+    "evidence_digest": "506d9bab643224e505d7559812021389ae1a158627c54fdc06a8cd9fa1f2830d",
+    "findings_total": 18,
+    "findings_blocking": 7,
+    "verdict": "REFUTED",
+    "reason": "Vendor answered \"yes\", but its own npm-audit returned 7 blocking finding(s): body-parser, lodash, lodash.",
+    "citations": [
+      "https://github.com/advisories/GHSA-qwcr-r2fm-qrc7",
+      "https://github.com/advisories/GHSA-35jh-r3h4-6jhm",
+      "https://github.com/advisories/GHSA-p6mc-m468-83gw",
+      "https://github.com/advisories/GHSA-r5fr-rjxr-66jc",
+      "https://github.com/advisories/GHSA-9wv6-86v2-598j"
+    ],
+    "decided_at": "2026-08-27T20:52:10.838Z"
   }
 ]

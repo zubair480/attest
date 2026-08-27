@@ -63,14 +63,24 @@ async function secondOpinion(control, answer, evidence, { timeoutMs = 60000, att
 }
 
 // Agreement is the interesting field, not the second verdict on its own.
+//
+// Disagreement is an OUTCOME, not a footnote. The counter can refute a claim on
+// evidence that cannot possibly answer it; the relevance judge can only say so.
+// Neither is authoritative over the other, so a split does not get resolved
+// here -- it gets escalated, because a case the two gates read differently is
+// precisely the one a person should read.
 function reconcile(deterministic, llm) {
-  if (!llm) return { second_opinion: 'unavailable' }
-  if (llm.error) return { second_opinion: 'error', detail: llm.error }
+  if (!llm) return { second_opinion: 'unavailable', outcome: deterministic }
+  if (llm.error) return { second_opinion: 'error', detail: llm.error, outcome: deterministic }
+  const agrees = llm.verdict === deterministic
   return {
     second_opinion: llm.verdict,
     reason: llm.reason,
     citations: llm.citations,
-    agrees: llm.verdict === deterministic
+    agrees,
+    outcome: agrees ? deterministic : 'ESCALATED',
+    escalation: agrees ? undefined
+      : `Gates disagree: deterministic says ${deterministic}, relevance judge says ${llm.verdict}. Neither overrides the other; a person decides.`
   }
 }
 
