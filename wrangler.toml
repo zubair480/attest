@@ -1,0 +1,8 @@
+name = "attest"
+main = "worker/index.js"
+compatibility_date = "2026-08-01"
+
+# The Runtype key is a secret, not config:
+#   npx wrangler secret put RUNTYPE_KEY
+# Without it the relevance judge falls back to cached judgments only, which is
+# the same honest degradation the local build has.

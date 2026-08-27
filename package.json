@@ -12,6 +12,9 @@
     "ledger": "node attest/src/cli.js ledger",
     "heartbeat": "node attest/src/ledger.js --watch",
     "dual": "node attest/src/dual.js",
-    "ui": "node ui/server.js"
+    "ui": "node ui/server.js",
+    "bundle": "node -e \"require(String.raw`./scripts/bundle.js`)\"",
+    "worker": "npx wrangler dev --local --port 8787",
+    "deploy": "npx wrangler deploy"
   }
 }
