@@ -1,105 +1,129 @@
 <!doctype html>
 <meta charset="utf-8">
-<title>Attest — console</title>
+<title>Attest — bank console</title>
 <style>
   :root{--bg:#0b0d10;--panel:#12161b;--line:#222a33;--fg:#e6e9ef;--mute:#8b96a5;
-        --held:#ff8f6b;--ok:#6bd68a;--esc:#ffc857;--accent:#7aa2ff}
+        --held:#ff8f6b;--ok:#6bd68a;--esc:#ffc857;--accent:#7aa2ff;--vend:#b48ef0}
   *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--fg);
     font:15px/1.55 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
-  .wrap{max-width:1080px;margin:0 auto;padding:36px 22px 80px}
-  h1{font-size:26px;margin:0 0 6px;letter-spacing:-.02em}
-  .sub{color:var(--mute);margin:0 0 26px;max-width:62ch}
-  .bar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:22px}
-  button{background:var(--accent);color:#0b0d10;border:0;border-radius:7px;
+  .wrap{max-width:1240px;margin:0 auto;padding:34px 22px 90px}
+  h1{font-size:25px;margin:0 0 5px;letter-spacing:-.02em}
+  .sub{color:var(--mute);margin:0 0 8px;max-width:70ch}
+  .seat{display:inline-block;font:11px ui-monospace,monospace;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);
+    border-radius:4px;padding:3px 8px;margin-bottom:16px}
+  .tabs{display:flex;gap:8px;margin:16px 0 6px;flex-wrap:wrap}
+  .tab{background:transparent;border:1px solid var(--line);color:var(--mute);
+    border-radius:7px;padding:9px 15px;font-size:14px;cursor:pointer}
+  .tab.on{border-color:var(--vend);color:var(--fg);background:rgba(180,142,240,.09)}
+  .bar{display:flex;gap:11px;align-items:center;flex-wrap:wrap;margin:14px 0 20px}
+  button.go{background:var(--accent);color:#0b0d10;border:0;border-radius:7px;
     padding:11px 20px;font-weight:650;font-size:15px;cursor:pointer}
-  button:disabled{opacity:.5;cursor:default}
-  .pill{font:12px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--mute);
+  button.go:disabled{opacity:.5;cursor:default}
+  .pill{font:12px ui-monospace,monospace;color:var(--mute);
     border:1px solid var(--line);border-radius:999px;padding:5px 11px}
-  table{width:100%;border-collapse:collapse;margin-top:8px}
+  table{width:100%;border-collapse:collapse}
   th{text-align:left;font:11px ui-monospace,monospace;letter-spacing:.09em;
      text-transform:uppercase;color:var(--mute);padding:0 12px 9px;font-weight:600}
   td{border-top:1px solid var(--line);padding:14px 12px;vertical-align:top}
-  tr[data-out="ESCALATED"]{background:rgba(255,200,87,.06)}
-  .id{font:13px ui-monospace,monospace;color:var(--fg)}
-  .q{color:var(--mute);font-size:13px;margin-top:3px;max-width:44ch}
-  .v{font:12px ui-monospace,monospace;font-weight:700;letter-spacing:.02em}
+  tr[data-out="ESCALATED"]{background:rgba(255,200,87,.07)}
+  .id{font:13px ui-monospace,monospace}
+  .q{color:var(--mute);font-size:13px;margin-top:3px;max-width:40ch}
+  .from{color:var(--vend);font:11px ui-monospace,monospace;letter-spacing:.04em}
+  .ev{font-size:13px;color:var(--fg);margin-top:4px}
+  .dig{font:11px ui-monospace,monospace;color:var(--mute);margin-top:4px}
+  .v{font:12px ui-monospace,monospace;font-weight:700}
   .REFUTED{color:var(--held)} .SUPPORTED{color:var(--ok)}
   .INSUFFICIENT,.ESCALATED{color:var(--esc)}
-  .why{color:var(--mute);font-size:13px;margin-top:7px;max-width:70ch}
-  .note{border-left:2px solid var(--esc);padding:10px 0 10px 14px;margin-top:10px;
-    color:#f0d9a4;font-size:13px;max-width:70ch}
+  .quota,.error,.unavailable{color:var(--mute)}
+  .why{color:var(--mute);font-size:13px;margin-top:6px;max-width:52ch}
+  .note{border-left:2px solid var(--esc);padding:9px 0 9px 13px;margin-top:9px;
+    color:#f0d9a4;font-size:13px;max-width:52ch}
   .empty{color:var(--mute);padding:26px 12px;font-size:14px}
-  footer{margin-top:34px;color:var(--mute);font-size:13px;max-width:74ch}
-  code{font:12px ui-monospace,monospace;color:#b9c4d4}
-  .spin{display:inline-block;width:13px;height:13px;border:2px solid var(--line);
+  footer{margin-top:30px;color:var(--mute);font-size:13px;max-width:80ch}
+  .spin{display:inline-block;width:12px;height:12px;border:2px solid var(--line);
     border-top-color:var(--accent);border-radius:50%;animation:s .7s linear infinite;
     vertical-align:-2px;margin-right:7px}
   @keyframes s{to{transform:rotate(360deg)}}
 </style>
 <div class="wrap">
+  <span class="seat">bank · third-party risk</span>
   <h1>Attest</h1>
-  <p class="sub">A bank asks a vendor a security control question. The vendor answers and
-  attaches evidence about its own system. The answer is not recorded until two independent
-  gates agree it is supported.</p>
+  <p class="sub">This is the bank's seat. The bank never touches the vendor's systems — it asks
+  a control question, and the vendor's own agent runs the collector on its own infrastructure and
+  hands back evidence. Two gates then decide whether that evidence supports the answer.</p>
 
+  <div class="tabs" id="tabs"></div>
   <div class="bar">
-    <button id="run">Run assessment</button>
+    <button class="go" id="run">Request attestation</button>
     <span class="pill" id="judge">…</span>
     <span class="pill" id="status">idle</span>
   </div>
 
   <table>
     <thead><tr>
-      <th style="width:31%">Control</th>
-      <th style="width:15%">Severity counter</th>
-      <th style="width:15%">Relevance judge</th>
+      <th style="width:24%">Control (bank asks)</th>
+      <th style="width:29%">Evidence returned by vendor</th>
+      <th style="width:12%">Severity counter</th>
+      <th style="width:12%">Relevance judge</th>
       <th>Outcome</th>
     </tr></thead>
-    <tbody id="rows"><tr><td colspan="4" class="empty">Press <b>Run assessment</b>. Nothing here is cached — the collectors and both gates execute on this machine when you click.</td></tr></tbody>
+    <tbody id="rows"><tr><td colspan="5" class="empty">Pick a vendor and press <b>Request attestation</b>. Nothing is cached at the bank — the vendor's collectors run when you ask.</td></tr></tbody>
   </table>
 
   <footer>
-    The severity counter is deterministic and offline. The relevance judge is a Runtype
-    agent asked one question only: can this evidence answer this control at all? Neither
-    overrides the other — when they split, the control escalates and nothing is recorded,
-    because that is the case a person should read.
+    The severity counter is deterministic and offline. The relevance judge is a Runtype agent
+    asked one question only: can this evidence answer this control at all? Neither overrides the
+    other — when they split, the control escalates and nothing is recorded. Evidence is produced
+    by the vendor, and its digest binds the bundle, not its truth.
   </footer>
 </div>
 <script>
 const $ = s => document.querySelector(s)
 const esc = s => String(s ?? '').replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))
+let VENDOR = null
 
 fetch('/api/meta').then(r => r.json()).then(m => {
+  window.__meta = m
   $('#judge').textContent = m.judge ? 'relevance judge: live' : 'relevance judge: no key'
-  window.__controls = m.controls
+  VENDOR = m.vendors[0].id
+  $('#tabs').innerHTML = m.vendors.map(v =>
+    `<button class="tab${v.id === VENDOR ? ' on' : ''}" data-v="${esc(v.id)}">${esc(v.name)}<span style="color:var(--mute)"> · ${esc(v.service)}</span></button>`).join('')
+  $('#tabs').onclick = e => {
+    const b = e.target.closest('.tab'); if (!b) return
+    VENDOR = b.dataset.v
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t === b))
+    $('#rows').innerHTML = '<tr><td colspan="5" class="empty">Press <b>Request attestation</b>.</td></tr>'
+    $('#status').textContent = 'idle'
+  }
 })
 
 $('#run').onclick = async () => {
   const btn = $('#run'); btn.disabled = true
-  $('#status').innerHTML = '<span class="spin"></span>running collectors + both gates'
+  const vName = (window.__meta.vendors.find(v => v.id === VENDOR) || {}).name || VENDOR
+  $('#status').innerHTML = `<span class="spin"></span>${esc(vName)}'s agent is collecting`
   $('#rows').innerHTML = ''
   try {
-    for (const c of (window.__controls || [])) {
+    for (const c of window.__meta.controls) {
       const tr = document.createElement('tr')
       tr.innerHTML = `<td><span class="id">${esc(c.id)}</span><div class="q">${esc(c.question)}</div></td>
-        <td colspan="3" class="q"><span class="spin"></span>collecting evidence…</td>`
+        <td colspan="4" class="q"><span class="spin"></span>waiting for ${esc(vName)}…</td>`
       $('#rows').appendChild(tr)
-      const [r] = await (await fetch('/api/run?control=' + encodeURIComponent(c.id))).json()
+      const [r] = await (await fetch(`/api/run?control=${encodeURIComponent(c.id)}&vendor=${encodeURIComponent(VENDOR)}`)).json()
       tr.dataset.out = r.outcome
       tr.innerHTML = `
-        <td><span class="id">${esc(r.control_id)}</span><div class="q">${esc(r.question)}</div>
-            <div class="q"><code>${esc(r.evidence_method)}</code> · ${r.findings_total} findings, ${r.findings_blocking} blocking</div></td>
+        <td><span class="id">${esc(r.control_id)}</span><div class="q">${esc(r.question)}</div></td>
+        <td><div class="from">${esc(r.vendor_name)} agent · ${esc(r.evidence_method)}</div>
+            <div class="ev">answered "${esc(r.vendor_answer)}" · ${r.findings_total} findings, <b>${r.findings_blocking} blocking</b></div>
+            <div class="dig">sha256 ${esc(String(r.evidence_digest).slice(0,20))}…</div></td>
         <td><span class="v ${esc(r.counter)}">${esc(r.counter)}</span></td>
-        <td><span class="v ${esc(r.judge)}">${esc(r.judge)}</span></td>
+        <td><span class="v ${esc(String(r.judge).replace(/\s+/g,'-'))}">${esc(r.judge)}</span></td>
         <td><span class="v ${esc(r.outcome)}">${esc(r.outcome)}</span>
             ${r.judge_reason ? `<div class="why">${esc(r.judge_reason)}</div>` : ''}
-            ${r.escalation ? `<div class="note">${esc(r.escalation)}</div>` : ''}
-            <div class="why"><code>sha256 ${esc(String(r.evidence_digest).slice(0,16))}…</code></div></td>`
+            ${r.escalation ? `<div class="note">${esc(r.escalation)}</div>` : ''}</td>`
     }
-    $('#status').textContent = 'done'
-  } catch (e) {
-    $('#status').textContent = 'error: ' + e.message
-  }
+    $('#status').textContent = 'attestation complete'
+  } catch (e) { $('#status').textContent = 'error: ' + e.message }
   btn.disabled = false
 }
 </script>
