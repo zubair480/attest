@@ -2,6 +2,13 @@ name = "attest"
 main = "worker/index.js"
 compatibility_date = "2026-08-01"
 
+# Workers AI is the fallback judge. Runtype stays primary; this only runs when
+# Runtype is unreachable or its quota is spent, so a judge's agent always gets a
+# real second opinion instead of a shrug. Every verdict says which judge produced
+# it, because "a model said so" is not an answer without knowing which model.
+[ai]
+binding = "AI"
+
 # The Runtype key is a secret, not config:
 #   npx wrangler secret put RUNTYPE_KEY
 # Without it the relevance judge falls back to cached judgments only, which is

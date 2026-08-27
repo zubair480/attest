@@ -114,9 +114,43 @@ function counter(control, answer, ev) {
   return { verdict: 'SUPPORTED', reason: 'Vendor answered "yes" and its ' + ev.method + ' returned no blocking findings.', citations: [] }
 }
 
-async function judge(control, answer, ev, env) {
-  const cached = DATA.judgeCache[control.id + ':' + ev.vendor + ':' + ev.raw_digest]
-  if (cached) return Object.assign({}, cached, { from_cache: true })
+const JUDGE_PROMPT = 'You are the relevance judge in a third-party security assessment. You are given a control question, a vendor answer, and evidence the vendor produced. You decide ONE thing: can this evidence answer this control at all. Rules: vendor_answer "yes" plus high or critical findings that bear on the question is REFUTED. vendor_answer "yes" with no such findings is SUPPORTED. Evidence that cannot speak to the question, however real it is, is INSUFFICIENT - a dependency scan says nothing about access control. Reply with JSON only, no prose and no code fences: {"verdict":"SUPPORTED|REFUTED|INSUFFICIENT","reason":"one sentence"}'
+
+function judgePayload(control, answer, ev) {
+  return JSON.stringify({
+    control_id: control.id,
+    question: control.question,
+    vendor_answer: answer,
+    evidence: { method: ev.method, findings: ev.findings.slice(0, 8) }
+  })
+}
+
+// Fallback judge. Runs inside the Worker, so it has no external quota to spend.
+// It answers the same single question and its verdict is labelled with the model
+// that produced it, so nobody has to guess which judge spoke.
+async function workersAiJudge(control, answer, ev, env) {
+  if (!env.AI) return { error: 'no AI binding' }
+  const model = '@cf/meta/llama-3.1-8b-instruct'
+  try {
+    const res = await env.AI.run(model, {
+      messages: [
+        { role: 'system', content: JUDGE_PROMPT },
+        { role: 'user', content: judgePayload(control, answer, ev) }
+      ],
+      max_tokens: 260
+    })
+    const raw = (res && (res.response || res.result || '')).toString()
+    const m = raw.match(/\{[\s\S]*\}/)
+    if (!m) return { error: 'workers-ai returned no json' }
+    const parsed = JSON.parse(m[0])
+    if (!parsed.verdict) return { error: 'workers-ai returned no verdict' }
+    return { verdict: parsed.verdict, reason: parsed.reason || null, citations: [], judged_by: 'workers-ai ' + model }
+  } catch (e) {
+    return { error: 'workers-ai: ' + String(e && e.message || e) }
+  }
+}
+
+async function runtypeJudge(control, answer, ev, env) {
   if (!env.RUNTYPE_KEY) return { error: 'no key configured' }
   try {
     const res = await fetch(RUNTYPE, {
@@ -135,11 +169,27 @@ async function judge(control, answer, ev, env) {
       })
     })
     const body = await res.json()
-    if (body.verdict) return { verdict: body.verdict, reason: body.reason, citations: body.citations || [] }
+    if (body.verdict) return { verdict: body.verdict, reason: body.reason, citations: body.citations || [], judged_by: 'runtype' }
     return { error: body.message || body.error || 'no verdict returned' }
   } catch (e) {
     return { error: String(e && e.message || e) }
   }
+}
+
+// Tiers, in order: a cached judgment for identical evidence, then Runtype, then
+// Workers AI. Falling through is never silent -- the verdict carries the judge
+// that produced it, and only a total failure returns an error.
+async function judge(control, answer, ev, env) {
+  const cached = DATA.judgeCache[control.id + ':' + ev.vendor + ':' + ev.raw_digest]
+  if (cached) return Object.assign({}, cached, { from_cache: true, judged_by: cached.judged_by || 'runtype (cached)' })
+
+  const primary = await runtypeJudge(control, answer, ev, env)
+  if (primary.verdict) return primary
+
+  const fallback = await workersAiJudge(control, answer, ev, env)
+  if (fallback.verdict) return fallback
+
+  return { error: primary.error + '; fallback: ' + fallback.error }
 }
 
 function reconcile(det, llm) {
@@ -153,6 +203,7 @@ function reconcile(det, llm) {
     second_opinion: llm.verdict,
     reason: llm.reason,
     citations: llm.citations,
+    judged_by: llm.judged_by || null,
     agrees,
     outcome: agrees ? det : 'ESCALATED',
     escalation: agrees ? null : 'Gates disagree: severity counter says ' + det + ', relevance judge says ' + llm.verdict + '. Neither overrides the other; a person decides.'
@@ -180,6 +231,7 @@ async function assess(control, vendorId, env) {
     citations: det.citations,
     judge: second.second_opinion,
     judge_reason: second.reason || null,
+    judged_by: second.judged_by || null,
     outcome: second.outcome,
     escalation: second.escalation || null
   }
