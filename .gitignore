@@ -1,5 +1,8 @@
 .runtype-key
 .model-key
+.cf-token
+.cf-login.log
+.cf-url.txt
 .cotal/auth/
 .cotal/creds/
 .cotal/events/
