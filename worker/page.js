@@ -3,13 +3,32 @@
 // snapshot taken on a real machine, because Workers cannot run npm audit.
 export const HTML = String.raw`<!doctype html>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Attest — bank console</title>
+<meta name="description" content="A bank asks a vendor a security control question. The answer is not recorded until two independent gates agree the evidence supports it.">
+<meta property="og:title" content="Attest">
+<meta property="og:description" content="Eval-gated security attestation between agents. Two gates: one counts findings, one asks whether the evidence answers the question at all.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b0d10'/%3E%3Cpath d='M16 4l9 3.5v8c0 5.6-3.7 10.4-9 12.5-5.3-2.1-9-6.9-9-12.5v-8L16 4z' fill='none' stroke='%237aa2ff' stroke-width='2.2' stroke-linejoin='round'/%3E%3Cpath d='M11.5 15.8l3.1 3.1 6-6.2' fill='none' stroke='%23ffc857' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <style>
   :root{--bg:#0b0d10;--line:#222a33;--fg:#e6e9ef;--mute:#8b96a5;
         --held:#ff8f6b;--ok:#6bd68a;--esc:#ffc857;--accent:#7aa2ff;--vend:#b48ef0}
   *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--fg);
     font:15px/1.55 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
   .wrap{max-width:1240px;margin:0 auto;padding:34px 22px 90px}
+  .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .summary{border:1px solid var(--esc);background:rgba(255,200,87,.07);border-radius:8px;
+    padding:14px 16px;margin:18px 0 4px;font-size:14px;color:#f0d9a4;display:none}
+  .summary b{color:var(--fg)}
+  @media (max-width:820px){
+    .wrap{padding:24px 14px 70px}
+    table,thead,tbody,tr,td,th{display:block}
+    thead{display:none}
+    tr{border:1px solid var(--line);border-radius:8px;margin-bottom:12px;padding:4px 0}
+    td{border-top:0;padding:9px 13px}
+    td:before{content:attr(data-l);display:block;font:10px ui-monospace,monospace;
+      letter-spacing:.09em;text-transform:uppercase;color:var(--mute);margin-bottom:3px}
+  }
   h1{font-size:25px;margin:0 0 5px;letter-spacing:-.02em}
   .sub{color:var(--mute);margin:0 0 8px;max-width:72ch}
   .seat{display:inline-block;font:11px ui-monospace,monospace;letter-spacing:.08em;
@@ -68,7 +87,9 @@ export const HTML = String.raw`<!doctype html>
     <span class="pill" id="status">idle</span>
   </div>
 
-  <table>
+  <div class="summary" id="summary"></div>
+
+  <div class="scroll"><table>
     <thead><tr>
       <th style="width:23%">Control (bank asks)</th>
       <th style="width:30%">Evidence returned by vendor</th>
@@ -77,7 +98,7 @@ export const HTML = String.raw`<!doctype html>
       <th>Outcome</th>
     </tr></thead>
     <tbody id="rows"><tr><td colspan="5" class="empty">Pick a vendor and press <b>Request attestation</b>.</td></tr></tbody>
-  </table>
+  </table></div>
 
   <footer>
     The severity counter is deterministic. The relevance judge is a Runtype agent asked one
@@ -100,6 +121,10 @@ fetch('/api/meta').then(r => r.json()).then(m => {
   $('#tabs').innerHTML = m.vendors.map(v =>
     '<button class="tab' + (v.id === VENDOR ? ' on' : '') + '" data-v="' + esc(v.id) + '">' +
     esc(v.name) + '<span style="color:var(--mute)"> &middot; ' + esc(v.service) + '</span></button>').join('')
+  // Run on arrival. A judge landing on an empty table has to be told what to do
+  // before the page says anything; this way the result is the first thing there.
+  setTimeout(function () { document.querySelector('#run').click() }, 150)
+
   $('#tabs').onclick = e => {
     const b = e.target.closest('.tab'); if (!b) return
     VENDOR = b.dataset.v
@@ -111,6 +136,8 @@ fetch('/api/meta').then(r => r.json()).then(m => {
 
 $('#run').onclick = async () => {
   const btn = $('#run'); btn.disabled = true
+  const rows = []
+  $('#summary').style.display = 'none'
   const v = (window.__meta.vendors.find(x => x.id === VENDOR) || {})
   $('#status').innerHTML = '<span class="spin"></span>' + esc(v.name) + "'s agent is collecting"
   $('#rows').innerHTML = ''
@@ -122,20 +149,32 @@ $('#run').onclick = async () => {
       $('#rows').appendChild(tr)
       const res = await fetch('/api/run?control=' + encodeURIComponent(c.id) + '&vendor=' + encodeURIComponent(VENDOR))
       const r = (await res.json())[0]
+      rows.push(r)
       tr.dataset.out = r.outcome
       tr.innerHTML =
-        '<td><span class="id">' + esc(r.control_id) + '</span><div class="q">' + esc(r.question) + '</div></td>' +
-        '<td><div class="from">' + esc(r.vendor_name) + ' agent &middot; ' + esc(r.evidence_method) +
+        '<td data-l="control"><span class="id">' + esc(r.control_id) + '</span><div class="q">' + esc(r.question) + '</div></td>' +
+        '<td data-l="evidence returned by vendor"><div class="from">' + esc(r.vendor_name) + ' agent &middot; ' + esc(r.evidence_method) +
           '<span class="tag">' + (r.evidence_live ? 'live' : 'snapshot') + '</span></div>' +
           '<div class="ev">answered "' + esc(r.vendor_answer) + '" &middot; ' + r.findings_total +
           ' findings, <b>' + r.findings_blocking + ' blocking</b></div>' +
           '<div class="dig">sha256 ' + esc(String(r.evidence_digest).slice(0,20)) + '&hellip;</div></td>' +
-        '<td><span class="v ' + esc(r.counter) + '">' + esc(r.counter) + '</span></td>' +
-        '<td><span class="v ' + esc(String(r.judge).replace(/\s+/g,'-')) + '">' + esc(r.judge) + '</span></td>' +
-        '<td><span class="v ' + esc(r.outcome) + '">' + esc(r.outcome) + '</span>' +
+        '<td data-l="severity counter"><span class="v ' + esc(r.counter) + '">' + esc(r.counter) + '</span></td>' +
+        '<td data-l="relevance judge"><span class="v ' + esc(String(r.judge).replace(/\s+/g,'-')) + '">' + esc(r.judge) + '</span>' +
+          (r.judged_by ? '<div class="dig">' + esc(r.judged_by) + '</div>' : '') + '</td>' +
+        '<td data-l="outcome"><span class="v ' + esc(r.outcome) + '">' + esc(r.outcome) + '</span>' +
           (r.judge_reason ? '<div class="why">' + esc(r.judge_reason) + '</div>' : '') +
           (r.escalation ? '<div class="note">' + esc(r.escalation) + '</div>' : '') + '</td>'
     }
+    const esc_ = rows.filter(x => x.outcome === 'ESCALATED')
+    const held = rows.filter(x => x.outcome === 'REFUTED').length
+    const acc = rows.filter(x => x.outcome === 'SUPPORTED').length
+    const sum = $('#summary')
+    sum.style.display = 'block'
+    sum.innerHTML = '<b>' + rows.length + ' controls: ' + held + ' held, ' + acc + ' accepted, ' +
+      esc_.length + ' escalated.</b>' + (esc_.length
+        ? ' On ' + esc_.map(x => x.control_id).join(', ') + ' the two gates disagreed, so nothing was recorded. ' +
+          'The severity counter said <b>' + esc_.map(x => x.counter).join(', ') + '</b> on evidence the relevance judge found could not answer the question at all.'
+        : '')
     $('#status').textContent = 'attestation complete'
   } catch (e) { $('#status').textContent = 'error: ' + e.message }
   btn.disabled = false
