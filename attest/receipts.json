@@ -17,7 +17,7 @@
       "https://github.com/advisories/GHSA-r5fr-rjxr-66jc",
       "https://github.com/advisories/GHSA-9wv6-86v2-598j"
     ],
-    "decided_at": "2026-08-27T20:52:09.521Z"
+    "decided_at": "2026-08-27T21:39:09.926Z"
   },
   {
     "control_id": "INP-01",
@@ -33,7 +33,7 @@
     "citations": [
       "https://github.com/advisories/GHSA-p6mc-m468-83gw"
     ],
-    "decided_at": "2026-08-27T20:52:09.522Z"
+    "decided_at": "2026-08-27T21:39:09.927Z"
   },
   {
     "control_id": "SCM-01",
@@ -47,7 +47,21 @@
     "verdict": "SUPPORTED",
     "reason": "Vendor answered \"yes\" and its lockfile-check returned no blocking findings.",
     "citations": [],
-    "decided_at": "2026-08-27T20:52:09.523Z"
+    "decided_at": "2026-08-27T21:39:09.928Z"
+  },
+  {
+    "control_id": "SEC-01",
+    "framework": "SIG/CAIQ",
+    "question": "Are credentials and secrets kept out of source code?",
+    "vendor_answer": "yes",
+    "evidence_method": "secret-scan",
+    "evidence_digest": "5ecc69af662ed393e654d6866dc2fdedb626633f97b6cce4ee77f025eb3e2113",
+    "findings_total": 0,
+    "findings_blocking": 0,
+    "verdict": "SUPPORTED",
+    "reason": "Vendor answered \"yes\" and its secret-scan returned no blocking findings.",
+    "citations": [],
+    "decided_at": "2026-08-27T21:39:09.928Z"
   },
   {
     "control_id": "ACC-01",
@@ -67,6 +81,6 @@
       "https://github.com/advisories/GHSA-r5fr-rjxr-66jc",
       "https://github.com/advisories/GHSA-9wv6-86v2-598j"
     ],
-    "decided_at": "2026-08-27T20:52:10.838Z"
+    "decided_at": "2026-08-27T21:39:11.125Z"
   }
 ]

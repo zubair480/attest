@@ -4,7 +4,7 @@
 // straight into a mesh message without reformatting.
 const fs = require('node:fs')
 const controls = require('../controls.json')
-const { collect } = require('./evidence')
+const { collect, vendors } = require('./evidence')
 const { evaluate, receipt } = require('./evaluate')
 const ledger = require('./ledger')
 
@@ -26,9 +26,15 @@ switch (cmd) {
     out(controls.map(({ id, question, evidence_method }) => ({ id, question, evidence_method })))
     break
 
+  case 'vendors':
+    // The portfolio an agent can be asked about.
+    out(vendors.map(({ id, name, service }) => ({ id, name, service })))
+    break
+
   case 'collect': {
-    // vendor side: produce evidence for one control
-    out(collect(findControl(rest[0])))
+    // vendor side: produce evidence for one control.
+    // collect <control_id> [vendor_id] -- defaults to the first vendor.
+    out(collect(findControl(rest[0]), rest[1]))
     break
   }
 
@@ -69,7 +75,8 @@ switch (cmd) {
   default:
     console.error(`usage:
   node src/cli.js controls
-  node src/cli.js collect <control_id>
+  node src/cli.js vendors
+  node src/cli.js collect <control_id> [vendor_id]
   node src/cli.js evaluate <control_id> <yes|no> <evidence.json|-> [--second-opinion]
   node src/cli.js ledger
   node src/cli.js ledger-log <actor> <event> <detail...>`)

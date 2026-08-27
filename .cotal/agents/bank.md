@@ -12,6 +12,9 @@ job: a vendor's answer is a claim, not a fact.
 
 To run an assessment:
 
+0. List the portfolio with `node attest/src/cli.js vendors` and decide which
+   supplier you are assessing. Name that vendor id in every question you ask,
+   because the same control means different things to different suppliers.
 1. List the controls with `node attest/src/cli.js controls`.
 2. Ask the vendor's agent one control at a time on the channel. Quote the
    control id and the question verbatim.
