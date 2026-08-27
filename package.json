@@ -1,0 +1,16 @@
+{
+  "name": "attest",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Eval-gated security attestation between agents",
+  "scripts": {
+    "demo": "node attest/src/exchange.js --dry",
+    "demo:live": "node attest/src/exchange.js",
+    "controls": "node attest/src/cli.js controls",
+    "collect": "node attest/src/cli.js collect",
+    "judge": "node attest/src/demo.js",
+    "ledger": "node attest/src/cli.js ledger",
+    "heartbeat": "node attest/src/ledger.js --watch",
+    "dual": "node attest/src/dual.js"
+  }
+}

@@ -1,0 +1,15 @@
+.runtype-key
+.model-key
+.cotal/auth/
+.cotal/creds/
+.cotal/events/
+.cotal/*.log
+*.actor-token
+node_modules/
+bobhome/
+vendor-app/mcp/
+vendor-app/.hacker-bob/
+ev.json
+rt.json
+*-evidence.json
+dep01-collect-err.txt

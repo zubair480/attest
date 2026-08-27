@@ -1,0 +1,23 @@
+[
+  {
+    "id": "DEP-01",
+    "framework": "SIG/CAIQ",
+    "question": "Are your production dependencies free of known high or critical severity vulnerabilities?",
+    "evidence_method": "dependency_scan",
+    "vendor_position": "yes"
+  },
+  {
+    "id": "INP-01",
+    "framework": "SIG/CAIQ",
+    "question": "Is untrusted user input validated before being merged into application objects?",
+    "evidence_method": "source_pattern",
+    "vendor_position": "yes"
+  },
+  {
+    "id": "SCM-01",
+    "framework": "SIG/CAIQ",
+    "question": "Are dependency versions pinned by a committed lockfile?",
+    "evidence_method": "lockfile_present",
+    "vendor_position": "yes"
+  }
+]

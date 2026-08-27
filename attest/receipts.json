@@ -1,0 +1,52 @@
+[
+  {
+    "control_id": "DEP-01",
+    "framework": "SIG/CAIQ",
+    "question": "Are your production dependencies free of known high or critical severity vulnerabilities?",
+    "vendor_answer": "yes",
+    "evidence_method": "npm-audit",
+    "evidence_digest": "506d9bab643224e505d7559812021389ae1a158627c54fdc06a8cd9fa1f2830d",
+    "findings_total": 18,
+    "findings_blocking": 7,
+    "verdict": "REFUTED",
+    "reason": "Vendor answered \"yes\", but its own npm-audit returned 7 blocking finding(s): body-parser, lodash, lodash.",
+    "citations": [
+      "https://github.com/advisories/GHSA-qwcr-r2fm-qrc7",
+      "https://github.com/advisories/GHSA-35jh-r3h4-6jhm",
+      "https://github.com/advisories/GHSA-p6mc-m468-83gw",
+      "https://github.com/advisories/GHSA-r5fr-rjxr-66jc",
+      "https://github.com/advisories/GHSA-9wv6-86v2-598j"
+    ],
+    "decided_at": "2026-08-27T20:01:43.116Z"
+  },
+  {
+    "control_id": "INP-01",
+    "framework": "SIG/CAIQ",
+    "question": "Is untrusted user input validated before being merged into application objects?",
+    "vendor_answer": "yes",
+    "evidence_method": "source-pattern",
+    "evidence_digest": "5ecc69af662ed393e654d6866dc2fdedb626633f97b6cce4ee77f025eb3e2113",
+    "findings_total": 1,
+    "findings_blocking": 1,
+    "verdict": "REFUTED",
+    "reason": "Vendor answered \"yes\", but its own source-pattern returned 1 blocking finding(s): server.js:15.",
+    "citations": [
+      "https://github.com/advisories/GHSA-p6mc-m468-83gw"
+    ],
+    "decided_at": "2026-08-27T20:01:43.116Z"
+  },
+  {
+    "control_id": "SCM-01",
+    "framework": "SIG/CAIQ",
+    "question": "Are dependency versions pinned by a committed lockfile?",
+    "vendor_answer": "yes",
+    "evidence_method": "lockfile-check",
+    "evidence_digest": "7d1ecdd52d0221de0ede922620d5c5903df194e912482902d565d0929984f334",
+    "findings_total": 0,
+    "findings_blocking": 0,
+    "verdict": "SUPPORTED",
+    "reason": "Vendor answered \"yes\" and its lockfile-check returned no blocking findings.",
+    "citations": [],
+    "decided_at": "2026-08-27T20:01:43.117Z"
+  }
+]
