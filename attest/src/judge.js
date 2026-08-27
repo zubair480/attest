@@ -13,6 +13,23 @@ const fs = require('node:fs')
 const path = require('node:path')
 
 const KEY_FILE = path.resolve(__dirname, '../../.runtype-key')
+const CACHE_FILE = path.resolve(__dirname, '../judge-cache.json')
+
+// A judgment is a function of the evidence, and the evidence has a digest.
+// Identical bundle, identical verdict -- so re-asking a model the same question
+// buys nothing and costs a call. The digest is the cache key, which means the
+// cache invalidates itself the moment the vendor's system changes.
+function loadCache() {
+  try { return JSON.parse(fs.readFileSync(CACHE_FILE, 'utf8')) } catch { return {} }
+}
+function cacheKey(control, evidence) {
+  return `${control.id}:${evidence.vendor || 'default'}:${evidence.raw_digest}`
+}
+function saveCache(key, value) {
+  const c = loadCache()
+  c[key] = { ...value, cached_at: new Date().toISOString() }
+  try { fs.writeFileSync(CACHE_FILE, JSON.stringify(c, null, 2)) } catch {}
+}
 const BASE = 'https://api.runtype.com/v1/products/prod_01m1287382enermwettbceza0y'
   + '/surfaces/surf_01m12873jfecev6zjmreqv0yw4/api'
 const CAPABILITY = 'attest_evidence_judge_agent'
@@ -24,6 +41,9 @@ function key() {
 // Returns null when unavailable. The product must keep working with no key,
 // no network and no account, so this is always optional.
 async function secondOpinion(control, answer, evidence, { timeoutMs = 60000, attempts = 3 } = {}) {
+  const cached = loadCache()[cacheKey(control, evidence)]
+  if (cached) return { ...cached, from_cache: true }
+
   const k = key()
   if (!k) return null
 
@@ -51,7 +71,11 @@ async function secondOpinion(control, answer, evidence, { timeoutMs = 60000, att
         signal: ctrl.signal
       })
       const body = JSON.parse(await res.text())
-      if (body.verdict) return { verdict: body.verdict, reason: body.reason, citations: body.citations || [], attempt: i + 1 }
+      if (body.verdict) {
+        const v = { verdict: body.verdict, reason: body.reason, citations: body.citations || [] }
+        saveCache(cacheKey(control, evidence), v)
+        return { ...v, attempt: i + 1 }
+      }
       last = body.message || body.error || 'no verdict returned'
     } catch (err) {
       last = err.name === 'AbortError' ? `timed out after ${timeoutMs}ms` : err.message
@@ -71,7 +95,18 @@ async function secondOpinion(control, answer, evidence, { timeoutMs = 60000, att
 // precisely the one a person should read.
 function reconcile(deterministic, llm) {
   if (!llm) return { second_opinion: 'unavailable', outcome: deterministic }
-  if (llm.error) return { second_opinion: 'error', detail: llm.error, outcome: deterministic }
+  if (llm.from_cache) llm = { ...llm, reason: llm.reason }
+  if (llm.error) {
+    // Name the reason. "error" tells a reader nothing; a spent daily quota and
+    // a broken endpoint call for completely different responses.
+    const quota = /Limit Exceeded|daily limit|LIMIT_EXCEEDED/i.test(llm.error)
+    return {
+      second_opinion: quota ? 'quota spent' : 'error',
+      detail: llm.error,
+      outcome: deterministic,
+      unjudged: true
+    }
+  }
   const agrees = llm.verdict === deterministic
   return {
     second_opinion: llm.verdict,

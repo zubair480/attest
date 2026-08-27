@@ -1,0 +1,37 @@
+{
+  "DEP-01:vendorco:506d9bab643224e505d7559812021389ae1a158627c54fdc06a8cd9fa1f2830d": {
+    "verdict": "REFUTED",
+    "reason": "The npm audit evidence contains multiple high-severity vulnerabilities in dependencies including body-parser and lodash.",
+    "citations": [
+      "https://github.com/advisories/GHSA-qwcr-r2fm-qrc7",
+      "https://github.com/advisories/GHSA-35jh-r3h4-6jhm"
+    ],
+    "cached_at": "2026-08-27T21:25:09.484Z"
+  },
+  "INP-01:vendorco:5ecc69af662ed393e654d6866dc2fdedb626633f97b6cce4ee77f025eb3e2113": {
+    "verdict": "REFUTED",
+    "reason": "A high-severity finding shows unvalidated request body input is merged directly into application objects via lodash.merge.",
+    "citations": [
+      "https://github.com/advisories/GHSA-p6mc-m468-83gw"
+    ],
+    "cached_at": "2026-08-27T21:25:09.485Z"
+  },
+  "SCM-01:vendorco:7d1ecdd52d0221de0ede922620d5c5903df194e912482902d565d0929984f334": {
+    "verdict": "SUPPORTED",
+    "reason": "The lockfile check returned no findings to refute the vendor's claim that dependency versions are pinned.",
+    "citations": [],
+    "cached_at": "2026-08-27T21:25:09.485Z"
+  },
+  "ACC-01:vendorco:506d9bab643224e505d7559812021389ae1a158627c54fdc06a8cd9fa1f2830d": {
+    "verdict": "INSUFFICIENT",
+    "reason": "The provided npm audit dependency scan is irrelevant to production access restrictions and multi-factor authentication.",
+    "citations": [],
+    "cached_at": "2026-08-27T21:25:10.721Z"
+  },
+  "ACC-01:northwind:aff7c5b76693412d4d6fbc0799ce81170be3063857a7288d8fa8938fcd6d9eaf": {
+    "verdict": "INSUFFICIENT",
+    "reason": "The provided npm audit evidence assesses software dependencies and cannot speak to production access controls or multi-factor authentication.",
+    "citations": [],
+    "cached_at": "2026-08-27T21:25:12.241Z"
+  }
+}

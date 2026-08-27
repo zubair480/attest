@@ -11,12 +11,21 @@ const { createHash } = require('node:crypto')
 const fs = require('node:fs')
 const path = require('node:path')
 
-const TARGET = path.resolve(__dirname, '../../vendor-app')
 const BLOCKING = ['high', 'critical']
+const vendors = require('../vendors.json')
+
+// A bank assesses a portfolio, not one supplier. Every collector takes the
+// vendor it is assessing, so the same control set runs against any of them and
+// the receipts say which system was actually looked at.
+function resolveVendor(id) {
+  const v = vendors.find(v => v.id === (id || vendors[0].id))
+  if (!v) throw new Error(`Unknown vendor ${id}. Known: ${vendors.map(v => v.id).join(', ')}`)
+  return { ...v, dir: path.resolve(__dirname, '../..', v.target) }
+}
 
 // --- collectors -----------------------------------------------------------
 
-function dependencyScan() {
+function dependencyScan(TARGET) {
   let raw
   try {
     // Static command, no interpolation, so the shell carries no injection surface.
@@ -51,7 +60,7 @@ const SINKS = [
   { re: /Object\.assign\s*\(\s*[^)]*req\.body/, title: 'Object.assign called directly on request body' }
 ]
 
-function sourcePattern() {
+function sourcePattern(TARGET) {
   const file = path.join(TARGET, 'server.js')
   const src = fs.readFileSync(file, 'utf8')
   const findings = []
@@ -69,7 +78,7 @@ function sourcePattern() {
   return { method: 'source-pattern', raw: src, findings }
 }
 
-function lockfilePresent() {
+function lockfilePresent(TARGET) {
   const file = path.join(TARGET, 'package-lock.json')
   const exists = fs.existsSync(file)
   const raw = exists ? fs.readFileSync(file, 'utf8') : ''
@@ -83,21 +92,46 @@ function lockfilePresent() {
   }
 }
 
+// Live credential shapes. Narrow on purpose: a matcher that guesses produces
+// findings a vendor cannot act on, which is worse than finding nothing.
+const SECRET_PATTERNS = [
+  { re: /(?:api|payment|client)?_?(?:secret|api_key|token)\s*=\s*['"][A-Za-z0-9_]{24,}['"]/i, title: 'Hardcoded credential assigned in source' },
+  { re: /AKIA[0-9A-Z]{16}/, title: 'AWS access key id committed to source' },
+  { re: /-----BEGIN (?:RSA |EC )?PRIVATE KEY-----/, title: 'Private key committed to source' }
+]
+
+function secretScan(TARGET) {
+  const file = path.join(TARGET, 'server.js')
+  const src = fs.readFileSync(file, 'utf8')
+  const findings = []
+  for (const p of SECRET_PATTERNS) {
+    const m = src.match(p.re)
+    if (!m) continue
+    const line = src.slice(0, m.index).split('\n').length
+    findings.push({ severity: 'critical', subject: `server.js:${line}`, title: p.title, citation: null })
+  }
+  return { method: 'secret-scan', raw: src, findings }
+}
+
 const COLLECTORS = {
   dependency_scan: dependencyScan,
   source_pattern: sourcePattern,
-  lockfile_present: lockfilePresent
+  lockfile_present: lockfilePresent,
+  secret_scan: secretScan
 }
 
 // --- bundle ---------------------------------------------------------------
 
-function collect(control) {
+function collect(control, vendorId) {
   const collector = COLLECTORS[control.evidence_method]
   if (!collector) throw new Error(`No collector for method: ${control.evidence_method}`)
-  const { method, raw, findings } = collector()
+  const vendor = resolveVendor(vendorId)
+  const { method, raw, findings } = collector(vendor.dir)
   return {
     control_id: control.id,
-    target: 'vendorco-api',
+    vendor: vendor.id,
+    vendor_name: vendor.name,
+    target: vendor.service,
     method,
     collected_at: new Date().toISOString(),
     findings,
@@ -106,4 +140,4 @@ function collect(control) {
   }
 }
 
-module.exports = { collect, BLOCKING }
+module.exports = { collect, BLOCKING, vendors, resolveVendor }

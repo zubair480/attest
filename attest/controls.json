@@ -21,6 +21,13 @@
     "vendor_position": "yes"
   },
   {
+    "id": "SEC-01",
+    "framework": "SIG/CAIQ",
+    "question": "Are credentials and secrets kept out of source code?",
+    "evidence_method": "secret_scan",
+    "vendor_position": "yes"
+  },
+  {
     "id": "ACC-01",
     "framework": "SIG/CAIQ",
     "question": "Is production access restricted to named individuals with multi-factor authentication?",

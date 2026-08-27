@@ -1,0 +1,4 @@
+[
+  { "id": "vendorco",  "name": "VendorCo",         "target": "vendor-app",  "service": "vendorco-api" },
+  { "id": "northwind", "name": "Northwind Systems", "target": "vendor2-app", "service": "northwind-api" }
+]

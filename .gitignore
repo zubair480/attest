@@ -9,6 +9,8 @@ node_modules/
 bobhome/
 vendor-app/mcp/
 vendor-app/.hacker-bob/
+vendor2-app/mcp/
+vendor2-app/.hacker-bob/
 ev.json
 rt.json
 *-evidence.json
