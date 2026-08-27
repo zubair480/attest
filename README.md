@@ -8,15 +8,14 @@ can verify instead of trust.
 
 ## Run it (no setup, no keys)
 
-    npm run judge
+    npm install --prefix vendor-app
+    npm install --prefix vendor2-app
+    npm run judge          # deterministic gate, offline, no keys
+    npm run dual           # both gates, across both vendors
+    npm run ui             # the bank's console at localhost:4173
 
-Scans a real target, evaluates three SIG/CAIQ controls, prints verdicts and
-writes `attest/receipts.json`.
-
-    npm run demo
-
-The same exchange formatted as the two-party conversation, printed locally.
-Drop `--dry` (`npm run demo:live`) to post it to the Cotal channel `team.attest`.
+`npm run judge` needs nothing but Node. `npm run dual` and the console use a
+Runtype key for the second gate if one is present, and say so plainly if not.
 
 ## What happens
 
@@ -30,56 +29,81 @@ Drop `--dry` (`npm run demo:live`) to post it to the Cotal channel `team.attest`
 
 Current run: **3 controls, 2 held, 1 accepted.**
 
-## The gate is doubled on purpose
+## Two vendors, because a bank has a portfolio
 
-    npm run dual
+The same five controls run against two suppliers with opposite risk profiles.
+Both answer "yes" to everything.
+
+| Control | VendorCo | Northwind Systems |
+|---|---|---|
+| DEP-01 dependencies free of high/critical CVEs | **held** — 7 blocking | accepted — 0 blocking |
+| INP-01 input validated before object merge | **held** — `server.js:15` | accepted |
+| SCM-01 versions pinned by lockfile | accepted | accepted |
+| SEC-01 credentials kept out of source | accepted | **held** — credential at `server.js:19` |
+| ACC-01 production access restricted with MFA | **escalated** | **escalated** |
+
+Two vendors, two completely different failures. That is the whole reason third
+party risk is a portfolio problem rather than a questionnaire.
+
+## The gate is doubled, and ACC-01 is why
 
 - **Severity counter** (`attest/src/evaluate.js`) counts blocking findings.
-  Fast, offline, cannot be argued out of a finding. It has no way to know
-  whether a finding is *relevant* to the control that was asked.
-- **Relevance judge** (`attest/src/judge.js`, a Runtype agent) is asked that one
-  question and only that one: can this evidence answer this control at all?
+  Deterministic, offline, cannot be argued out of a finding. It has no way to
+  know whether a finding is *relevant* to the control that was asked.
+- **Relevance judge** (`attest/src/judge.js`, a Runtype agent) is asked one
+  question only: can this evidence answer this control at all?
 
-Both gates over four controls, run live:
+ACC-01 asks whether production access is restricted with MFA, and is answered
+with a dependency scan — the wrong instrument. Watch what the counter does:
 
-| Control | Severity counter | Relevance judge | Outcome |
+| Vendor | Severity counter | Relevance judge | Outcome |
 |---|---|---|---|
-| DEP-01 | REFUTED | REFUTED | held |
-| INP-01 | REFUTED | REFUTED | held |
-| SCM-01 | SUPPORTED | SUPPORTED | accepted |
-| ACC-01 | REFUTED | **INSUFFICIENT** | **escalated** |
+| VendorCo | REFUTED | INSUFFICIENT | escalated |
+| Northwind | **SUPPORTED** | INSUFFICIENT | escalated |
 
-**ACC-01 is why the second gate exists.** It asks whether production access is
-restricted to named individuals with MFA, and it is answered with a dependency
-scan — the wrong instrument entirely. The counter sees seven blocking findings
-and refutes. The judge sees that npm audit output cannot speak to access
-control, and refuses to conclude anything:
+**The counter is wrong in both directions on the same control.** It refuses
+VendorCo because that vendor happens to have dependency findings, and it clears
+Northwind because that vendor happens not to — neither of which says anything
+about access control. The judge's answer for both:
 
-> "The provided npm audit dependency scan does not evaluate or provide evidence
-> regarding production access control or multi-factor authentication."
+> "The provided npm audit evidence assesses software dependencies and cannot
+> speak to production access controls or multi-factor authentication."
 
-A counter alone would have recorded a refusal it had no grounds for. That is a
-false negative against the vendor, produced confidently, and no amount of
-counting catches it.
+A false refusal costs a vendor a deal. **A false pass clears a control nobody
+checked**, and the bank finds out during an incident. One gate produces both.
 
-**Disagreement is an outcome, not a footnote.** Neither gate overrides the
-other. A split escalates and nothing is recorded, because a case the two gates
-read differently is precisely the one a person should read. Delete
-`.runtype-key` and the counter carries on alone — with that blind spot back.
+**Disagreement is an outcome.** Neither gate overrides the other; a split
+escalates and nothing is recorded, because that is the case a person should
+read. Delete `.runtype-key` and the counter carries on alone, with the blind
+spot back.
+
+## Judgments are cached on the evidence digest
+
+A judgment is a function of the evidence, and every bundle carries a sha256. Identical
+evidence, identical verdict — so re-asking costs a call and buys nothing. The digest is
+the cache key, which means the cache invalidates itself the moment a vendor's system
+changes. Controls with no cached judgment and no quota report that plainly rather
+than guessing.
 
 ## Evidence is pluggable, and says what it is
 
-| Control | Method | Result |
-|---|---|---|
-| DEP-01 dependencies free of high/critical CVEs | `npm-audit` | 7 blocking → **HELD** |
-| INP-01 input validated before object merge | `source-pattern` | `server.js:15` → **HELD** |
-| SCM-01 versions pinned by lockfile | `lockfile-check` | 0 blocking → **ACCEPTED** |
+Four collectors, each answering a different kind of question:
 
-Adding a control means writing a collector. The verdict rule never changes.
+| Method | What it does |
+|---|---|
+| `npm-audit` | Runs `npm audit` against the vendor's tree and reads published advisories |
+| `source-pattern` | Matches prototype-pollution sinks reachable from request data |
+| `lockfile-check` | Checks for a committed lockfile |
+| `secret-scan` | Matches hardcoded credential assignments |
 
-Every bundle records which producer ran, so a substituted method is visible
-rather than hidden. Hacker Bob's local runtime is the intended producer for the
-scan methods; `npm audit` stands in and is labelled as such.
+Adding a control means writing a collector. **The verdict rule never changes** —
+that split is why a new control never touches the gate.
+
+Collectors take the vendor they are assessing, so the same control set runs
+against any supplier and each bundle records which system was actually looked
+at. Every bundle also records which producer ran, so a substituted method is
+visible rather than hidden: Hacker Bob's local runtime is the intended producer
+for the scan methods, and `npm audit` stands in, labelled as such.
 
 ## It actually runs between two agents
 
@@ -151,9 +175,17 @@ None of that is built.
 
 ## Layout
 
-    vendor-app/          the system under attestation (deliberately imperfect)
-    attest/controls.json the control set
+    vendor-app/              VendorCo's system: stale dependencies, a live sink
+    vendor2-app/             Northwind's system: current deps, a leaked credential
+    attest/vendors.json      the portfolio
+    attest/controls.json     the control set
+    attest/judge-cache.json  judgments, keyed by evidence digest
     attest/src/evidence.js   collectors, one per evidence method
-    attest/src/evaluate.js   the eval gate and receipts
+    attest/src/evaluate.js   the severity counter and receipts
+    attest/src/judge.js      the relevance judge and reconciliation
+    attest/src/dual.js       both gates across the portfolio
     attest/src/exchange.js   drives the exchange onto the Cotal channel
+    attest/src/ledger.js     shared coordination state
     attest/src/cli.js        the tool surface both agents call
+    ui/                      the bank's console
+    .cotal/agents/           bank and vendor personas

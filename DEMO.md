@@ -1,43 +1,59 @@
 # Demo
 
 Everything below is captured output from a real run, not written by hand.
-Reproduce it yourself: `npm install` in `vendor-app/`, then `npm run judge`
-(no keys needed) or `npm run dual` (needs a Runtype key for the second gate).
 
-## 1. Both gates, four controls
+Reproduce it: `npm install --prefix vendor-app`, `npm install --prefix vendor2-app`,
+then `npm run judge` (no keys, offline) or `npm run dual` (both gates, both vendors).
+`npm run ui` opens the bank's console at localhost:4173.
+
+The `quota spent` rows are honest: the Runtype trial key allows 50 calls a day and
+they are spent. Those controls fall back to the counter alone, which is the documented
+degradation. Judgments already made are cached on the evidence digest and still shown.
+
+## 1. Both gates, five controls, two vendors
 
 ```
 Runtype relevance judge: enabled
 
-control  severity-count   relevance-judge   outcome
--------  ---------------  ----------------  --------
-DEP-01   REFUTED          REFUTED           REFUTED
-         judge: The npm audit evidence shows multiple high severity vulnerabilities in production dependencies such as body-parser and lodash.
-INP-01   REFUTED          REFUTED           REFUTED
-         judge: The evidence identifies a high-severity vulnerability where unvalidated request body input is merged directly into application objects.
-SCM-01   SUPPORTED        SUPPORTED         SUPPORTED
-         judge: The lockfile check produced no findings, supporting the vendor's claim that dependency versions are pinned.
-ACC-01   REFUTED          INSUFFICIENT      ESCALATED
+VendorCo  (vendorco-api)
+control  severity-counter  relevance-judge   outcome
+-------  ----------------  ----------------  --------
+DEP-01   REFUTED           REFUTED           REFUTED
+INP-01   REFUTED           REFUTED           REFUTED
+SCM-01   SUPPORTED         SUPPORTED         SUPPORTED
+SEC-01   SUPPORTED         quota spent       SUPPORTED
+ACC-01   REFUTED           INSUFFICIENT      ESCALATED
          Gates disagree: deterministic says REFUTED, relevance judge says INSUFFICIENT. Neither overrides the other; a person decides.
-         judge: The provided npm audit vulnerability findings do not evaluate or provide evidence regarding production access control or multi-factor authentication.
 
-4 controls. 2 held, 1 accepted, 1 escalated.
+Northwind Systems  (northwind-api)
+control  severity-counter  relevance-judge   outcome
+-------  ----------------  ----------------  --------
+DEP-01   SUPPORTED         quota spent       SUPPORTED
+INP-01   SUPPORTED         quota spent       SUPPORTED
+SCM-01   SUPPORTED         quota spent       SUPPORTED
+SEC-01   REFUTED           quota spent       REFUTED
+ACC-01   SUPPORTED         INSUFFICIENT      ESCALATED
+         Gates disagree: deterministic says SUPPORTED, relevance judge says INSUFFICIENT. Neither overrides the other; a person decides.
 
-Escalated: ACC-01. The severity counter refuted these; the
-relevance judge found the evidence could not answer the question at all.
-A counter alone would have recorded a refusal it had no grounds for.
+10 assessments across 2 vendor(s): 3 held, 5 accepted, 2 escalated.
+
+5 control(s) went unjudged: the Runtype trial key allows 50 calls a day
+and they are spent. Those rows fall back to the counter alone, which is the
+documented degradation -- and exactly the blind spot the escalations above show.
+
+The counter would have PASSED northwind/ACC-01 on evidence
+that cannot answer the question. A false pass is the expensive kind: it clears
+a control nobody actually checked. Only the relevance gate caught it.
 ```
 
-**ACC-01 is the point.** It asks whether production access is restricted to
-named individuals with MFA, and it is answered with a dependency scan — the
-wrong instrument entirely. The severity counter sees seven blocking findings and
-refutes. The relevance judge refuses to conclude anything, because npm audit
-output cannot speak to access control.
+**ACC-01 is the point, and it lands twice.** It asks whether production access is
+restricted with MFA, and it is answered with a dependency scan. The counter
+refuses VendorCo because that supplier happens to have dependency findings, and
+**clears Northwind** because that one happens not to. Neither fact says anything
+about access control.
 
-A counter alone would have recorded a confident refusal it had no grounds for.
-That is a false negative against the vendor, and no amount of counting catches
-it. Neither gate overrides the other, so the control escalates and nothing is
-recorded.
+A false refusal costs a vendor a deal. A false pass clears a control nobody
+checked. One gate produces both; only the relevance judge catches either.
 
 ## 2. A receipt
 
