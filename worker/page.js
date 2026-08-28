@@ -97,7 +97,7 @@ export const HTML = String.raw`<!doctype html>
       <th style="width:12%">Relevance judge</th>
       <th>Outcome</th>
     </tr></thead>
-    <tbody id="rows"><tr><td colspan="5" class="empty">Pick a vendor and press <b>Request attestation</b>.</td></tr></tbody>
+    <tbody id="rows"><tr><td colspan="5" class="empty">Pick a vendor and press <b>Request attestation</b>. Nothing here is cached at the bank &mdash; the vendor's collectors run when you ask.</td></tr></tbody>
   </table></div>
 
   <footer>
@@ -121,10 +121,6 @@ fetch('/api/meta').then(r => r.json()).then(m => {
   $('#tabs').innerHTML = m.vendors.map(v =>
     '<button class="tab' + (v.id === VENDOR ? ' on' : '') + '" data-v="' + esc(v.id) + '">' +
     esc(v.name) + '<span style="color:var(--mute)"> &middot; ' + esc(v.service) + '</span></button>').join('')
-  // Run on arrival. A judge landing on an empty table has to be told what to do
-  // before the page says anything; this way the result is the first thing there.
-  setTimeout(function () { document.querySelector('#run').click() }, 150)
-
   $('#tabs').onclick = e => {
     const b = e.target.closest('.tab'); if (!b) return
     VENDOR = b.dataset.v
